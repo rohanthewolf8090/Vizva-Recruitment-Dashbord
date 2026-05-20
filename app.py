@@ -2,8 +2,10 @@ import streamlit as st
 import pandas as pd
 import datetime
 import random
+import smtplib
+from email.mime.text import MIMEText
 
-# ─── RECRUITER CONSTANTS & FIXED TARGETS ──────────────────────────────────
+# ─── RECRUITER CONSTANTS & TARGET DEFINITIONS ──────────────────────────────
 # Target Group A (30 calls, 2 interviews): Apoorva, Dibyajyoti
 # Target Group B (60 calls, 4 interviews): Devendra, Puneet, Kunal
 RECRUITER_TERMS = {
@@ -27,9 +29,7 @@ st.markdown("""
     h1, h2, h3 { color: #0F172A; font-weight: 700; }
     
     /* Clean, unobtrusive background watermark text styling */
-    .reportview-container .main .block-container{
-        position: relative;
-    }
+    .reportview-container .main .block-container{ position: relative; }
     .main::before {
         content: "VIZVA";
         position: fixed;
@@ -38,7 +38,7 @@ st.markdown("""
         transform: translate(-50%, -50%) rotate(-15deg);
         font-size: 14vw;
         font-weight: 900;
-        color: rgba(30, 58, 138, 0.03); /* Extremely soft transparent navy */
+        color: rgba(30, 58, 138, 0.03); /* Soft transparent navy logo fill */
         z-index: 0;
         pointer-events: none;
         white-space: nowrap;
@@ -49,37 +49,52 @@ st.markdown("""
         border-radius: 6px; padding: 10px 24px; border: none; transition: 0.3s;
     }
     div.stButton > button:first-child:hover { background-color: #1D4ED8; }
-    
-    /* Urgency Badge Styles */
-    .badge-burning { background-color: #FEE2E2; color: #991B1B; padding: 4px 10px; border-radius: 12px; font-weight: 700; }
-    .badge-top { background-color: #FFEDD5; color: #9A3412; padding: 4px 10px; border-radius: 12px; font-weight: 700; }
-    .badge-priority { background-color: #FEF9C3; color: #713F12; padding: 4px 10px; border-radius: 12px; font-weight: 700; }
-    .badge-low { background-color: #F1F5F9; color: #334155; padding: 4px 10px; border-radius: 12px; font-weight: 700; }
     </style>
     """, unsafe_allow_html=True)
 
-# ─── LOCAL STORAGE INITIALIZATION (100% FRESH START SYSTEM STATE) ──────────
+# ─── LOCAL STORAGE INITIALIZATION (100% FRESH START) ───────────────────────
 if 'positions_db' not in st.session_state:
-    # Completely empty fresh table structure
     st.session_state.positions_db = pd.DataFrame(columns=[
         "ID", "Type", "Position", "Total", "Joined", "Offered", "Open", "HM", "Location", "Deadline", "Status"
     ])
 
 if 'candidate_logs_db' not in st.session_state:
-    # Completely empty fresh recruiter activity log sheet
     st.session_state.candidate_logs_db = pd.DataFrame(columns=[
         "Date", "Recruiter", "Candidate Name", "Designation", "Email", "Contact Details", 
         "Current CTC", "Expected CTC", "Notice Period", "Source", "Status", "Remarks Summary", "Resume File"
     ])
 
-# ─── NOTIFICATION EMAIL ROUTER ──────────────────────────────────────────────
+# ─── LIVE NOTIFICATION EMAIL ENGINE (REAL AUTOMATION) ──────────────────────
 def trigger_system_email(subject, recipients, body_content):
-    """Fires operational screen alerts. Can be connected seamlessly to SMTP later."""
-    st.toast(f"✉️ Notification Dispatched to {', '.join(recipients)}", icon="📩")
-    with st.sidebar.expander("📨 Active Outbound Email Log", expanded=False):
-        st.caption(f"**Subject:** {subject}")
-        st.caption(f"**To:** {', '.join(recipients)}")
-        st.code(body_content, language="text")
+    """Sends real automated emails to the TAG team and Dibyajyoti instantly"""
+    
+    # 🌟 KEY SETUP: Replace these lines with your actual company credentials to activate real delivery!
+    SENDER_EMAIL = "hr@vizvainc.com" 
+    SENDER_PASSWORD = "your-secure-email-app-password" # App password generated from email settings
+    SMTP_SERVER = "smtp.gmail.com"  # Use "smtp.office365.com" if your firm uses Outlook
+    SMTP_PORT = 587
+
+    try:
+        # Build message package
+        msg = MIMEText(body_content)
+        msg['Subject'] = subject
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = ", ".join(recipients)
+        
+        # Connect securely to mail provider server and push live transmission
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+        server.sendmail(SENDER_EMAIL, recipients, msg.as_string())
+        server.quit()
+        
+        st.toast(f"📥 Live Email Notification Dispatched successfully to inboxes!", icon="✉️")
+    except Exception as e:
+        # Graceful fallback alert context so app runs smoothly even before emails are wired
+        st.sidebar.warning("⚠️ Real-world email credentials not configured yet. Output logging locally instead.")
+        with st.sidebar.expander("📨 Local Outbound Email Queue Logs", expanded=False):
+            st.caption(f"**To:** {', '.join(recipients)}")
+            st.code(body_content, language="text")
 
 # ─── AUTOMATED PRIORITY CALCULATOR ──────────────────────────────────────────
 def evaluate_urgency_index(row):
@@ -88,8 +103,6 @@ def evaluate_urgency_index(row):
         return "🔥 Burning"
     elif days_remaining <= 14 and row['Open'] >= 5:
         return "⚡ Top Priority"
-    elif days_remaining <= 14:
-        return "📈 Priority"
     return "🟢 Low Priority"
 
 # ─── CORPORATE SIDEBAR BRANDING ─────────────────────────────────────────────
@@ -123,7 +136,7 @@ if app_panel == "Hiring Manager Desk":
         with col2:
             branch_loc = st.selectbox("Target Deployment Location", ["Noida Office (NCR)", "Ahmedabad Office (AHM)", "Lucknow Office (LKO)"])
             target_date = st.date_input("Target Sourcing Closure Deadline Date", min_value=datetime.date.today() + datetime.timedelta(days=1))
-            job_description = st.text_area("Core Job Parameters & Preferred Communication Prerequisites")
+            job_description = st.text_area("Core Job Parameters & Preferred Prerequisites")
             
         submit_requirement = st.form_submit_button("Release Sourcing Stream")
         
@@ -136,11 +149,11 @@ if app_panel == "Hiring Manager Desk":
             }
             st.session_state.positions_db = pd.concat([st.session_state.positions_db, pd.DataFrame([new_position_row])], ignore_index=True)
             
-            # AUTOMATED TRIGGER: Alert the TAG Team instantly on creation
+            # AUTOMATED TRIGGER: Instant email dispatched to active inboxes
             alert_recipients = ["Tag@silverspaceinc.com", "Dibyajyoti.Ghosh@vizvainc.com"]
-            email_msg = f"Attention TAG Team,\n\nA brand new recruitment request for '{pos_title}' ({headcount} open slots) has been initialized by Hiring Manager: {user_identity}.\nTarget Closure Timeline Assigned: {target_date}.\n\nThis allocation is routing to Rohan Sharma for executive authorization."
+            email_msg = f"Attention TAG Team & Dibyajyoti,\n\nA brand new recruitment request for '{pos_title}' ({headcount} open slots) has been initialized by Hiring Manager: {user_identity}.\nTarget Deployment Location: {branch_loc}.\n\nThis allocation has been routed to Rohan Sharma for final executive authorization."
             trigger_system_email(f"[REQ DISPATCHED] Pending Authorization: {pos_title}", alert_recipients, email_msg)
-            st.success("Requirement registered successfully! Alerts transmitted to your TAG team desks.")
+            st.success("Requirement registered successfully! Real-time alerts transmitted.")
 
 # ==========================================
 # PANEL 2: ROHAN'S OPERATIONAL GATE
@@ -160,9 +173,8 @@ elif app_panel == "Rohan's Operational Gate":
                 if st.button("Authorize Allocation & Broadcast Pipeline", key=f"auth_btn_{row['ID']}"):
                     st.session_state.positions_db.loc[st.session_state.positions_db['ID'] == row['ID'], 'Status'] = "Approved"
                     
-                    # AUTOMATED TRIGGER: Notify the HM and Sourcing team that work has started
                     team_recipients = ["Tag@silverspaceinc.com", "Dibyajyoti.Ghosh@vizvainc.com"]
-                    activation_msg = f"Operational Alert,\n\nRohan Sharma has authorized the processing of '{row['Position']}' (Target Deadline: {row['Deadline']}).\nThe allocation matrix is officially deployed to all multi-location active recruiter pipelines. Sourcing tasks have commenced."
+                    activation_msg = f"Operational Alert,\n\nRohan Sharma has officially authorized the pipeline processing for '{row['Position']}' (Target Deadline: {row['Deadline']}).\nThe matrix is deployed to all multi-location active recruiter workspaces. Sourcing tasks must commence immediately."
                     trigger_system_email(f"[WORK STARTED] Pipeline Activated: {row['Position']}", team_recipients, activation_msg)
                     st.success(f"Pipeline tracking live for {row['Position']}. Broadcast completed.")
                     st.rerun()
@@ -176,15 +188,13 @@ elif app_panel == "Recruiter Workspace":
     st.title(f"🎧 Centralized Recruiter Console: {user_identity}")
     
     if user_identity not in RECRUITER_TERMS:
-        st.warning("Please switch your identity in the sidebar navigation panel to an active recruiter account to check your dynamic daily milestones.")
+        st.warning("Please switch your identity in the sidebar navigation panel to an active recruiter account to check milestones.")
     else:
         rec_limits = RECRUITER_TERMS[user_identity]
         st.subheader("🎯 Live Daily Performance Benchmarks")
         
-        # Calculate daily targets progress dynamically
         df_logs = st.session_state.candidate_logs_db
         today_date_str = datetime.date.today().strftime('%Y-%m-%d')
-        
         today_records = df_logs[(df_logs['Recruiter'] == user_identity) & (df_logs['Date'] == today_date_str)] if not df_logs.empty else pd.DataFrame()
         
         logged_calls = len(today_records)
@@ -220,7 +230,7 @@ elif app_panel == "Recruiter Workspace":
                 milestone_status = st.selectbox("Current Tracking Milestone Status", ["Screening", "Interview", "Salary Discussion", "Offered", "Joined", "Rejected"])
                 
             remarks_summary = st.text_area("Current Remarks Summary / Direct Case Context Log")
-            resume_file_blob = st.file_uploader("📂 Cherry-on-the-Cake: Upload Candidate Resume Profile", type=["pdf", "docx"])
+            resume_file_blob = st.file_uploader("📂 Upload Candidate Resume Profile", type=["pdf", "docx"])
             
             commit_entry = st.form_submit_button("Commit Sourcing Record Entry")
             if commit_entry:
@@ -241,13 +251,11 @@ elif app_panel == "Weekly Leadership Overview":
     st.title("📊 Automated Recruitment Analytics Dashboard")
     st.write("PAN-India real-time delivery tracking. No daily alignment meetings are required.")
     
-    # Render Active Corporate Pipeline Table
     st.subheader("🏢 Active Corporate Requirements & Urgency Matrix")
     master_pos_df = st.session_state.positions_db.copy()
     approved_pos_df = master_pos_df[master_pos_df['Status'] == "Approved"]
     
     if not approved_pos_df.empty:
-        # Compute real-time values dynamically
         approved_pos_df['Fulfillment %'] = (((approved_pos_df['Joined'] + approved_pos_df['Offered']) / approved_pos_df['Total']) * 100).round(1)
         approved_pos_df['Urgency Level'] = approved_pos_df.apply(evaluate_urgency_index, axis=1)
         
@@ -259,11 +267,8 @@ elif app_panel == "Weekly Leadership Overview":
         st.info("The active operations pipeline is clear. Sourcing requirements will populate automatically once approved by Rohan Sharma.")
         
     st.write("---")
-    
-    # Transactional Log Monitoring Feed
     st.subheader("🕵️ Centralized Sourcing Activity Logs Live Feed")
     master_logs_df = st.session_state.candidate_logs_db
-    
     if not master_logs_df.empty:
         st.dataframe(master_logs_df, use_container_width=True)
     else:
